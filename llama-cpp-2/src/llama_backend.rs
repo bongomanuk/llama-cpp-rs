@@ -44,8 +44,14 @@ impl LlamaBackend {
     #[tracing::instrument(skip_all)]
     pub fn init() -> crate::Result<LlamaBackend> {
         Self::mark_init()?;
-        unsafe { llama_cpp_sys_2::llama_backend_init() }
-        Ok(LlamaBackend {})
+        let ret = unsafe { llama_cpp_sys_2::llama_backend_init() };
+        if ret != 0 {
+            tracing::debug!("Backend initialization successful");
+            Ok(LlamaBackend {})
+        } else {
+            tracing::error!("Backend initialization failed");
+            Err(LLamaCppError::BackendAlreadyInitialized)
+        }
     }
 
     /// Initialize the llama backend (with numa).
@@ -65,6 +71,7 @@ impl LlamaBackend {
     pub fn init_numa(strategy: NumaStrategy) -> crate::Result<LlamaBackend> {
         Self::mark_init()?;
         unsafe {
+            llama_cpp_sys_2::llama_backend_init();
             llama_cpp_sys_2::llama_numa_init(llama_cpp_sys_2::ggml_numa_strategy::from(strategy));
         }
         Ok(LlamaBackend {})
